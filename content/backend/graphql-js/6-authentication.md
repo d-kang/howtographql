@@ -80,7 +80,7 @@ Still in `src/schema.graphql`, add the following type definitions:
 
 ```graphql(path=".../hackernews-node/src/schema.graphql")
 type AuthPayload {
-  token: String
+  Token: String
   user: User
 }
 
@@ -94,7 +94,7 @@ type User {
 
 </Instruction>
 
-So, effectively the `signup` and `login` mutations behave very similarly. Both return information about the `User` who's signing up (or logging in) as well as a `token` which can be used to authenticate subsequent requests against the API. This information is bundled in the `AuthPayload` type.
+So, effectively the `signup` and `login` mutations behave very similarly. Both return information about the `User` who's signing up (or logging in) as well as a `Token` which can be used to authenticate subsequent requests against the API. This information is bundled in the `AuthPayload` type.
 
 But wait a minute 🤔 Why are you redefining the `User` type this time. Isn't this a type that could also be imported from the Prisma database schema? It sure is!
 
@@ -153,11 +153,11 @@ async function signup(parent, args, context, info) {
   }, `{ id }`)
 
   // 3
-  const token = jwt.sign({ userId: user.id }, APP_SECRET)
+  const Token = jwt.sign({ userId: user.id }, APP_SECRET)
 
   // 4
   return {
-    token,
+    Token,
     user,
   }
 }
@@ -175,11 +175,11 @@ async function login(parent, args, context, info) {
     throw new Error('Invalid password')
   }
 
-  const token = jwt.sign({ userId: user.id }, APP_SECRET)
+  const Token = jwt.sign({ userId: user.id }, APP_SECRET)
 
   // 3
   return {
-    token,
+    Token,
     user,
   }
 }
@@ -198,13 +198,13 @@ Let's use the good ol' numbered comments again to understand what's going on her
 1. In the `signup` mutation, the first thing to do is encrypting the `User`'s password using the `bcryptjs` library which you'll install later.
 1. The next step is to use the `Prisma` binding instance to store the new `User` in the database. Notice that you're hardcoding the `id` in the selection set - nothing else. We'll discuss this in more in detail soon.
 1. You're then generating a JWT which is signed with an `APP_SECRET`. You still need to create this `APP_SECRET` and also install the `jwt` library that's used here.
-1. Finally, you return the `token` and the `user`.
+1. Finally, you return the `Token` and the `user`.
 
 Now on the `login` mutation:
 
 1. Instead of _creating_ a new `User` object, you're now using the `Prisma` binding instance to retrieve the existing `User` record by the `email` address that was sent along in the `login` mutation. If no `User` with that email address was found, you're returning a corresponding error. Notice that this time you're asking for the `id` and the `password` in the selection set. The `password` is needed because it needs to be compared with the one provided in the `login` mutation.
 1. The next step is to compare the provided password with the one that is stored in the database. If the two don't match up, you're returning an error as well.
-1. In the end, you're returning `token` and `user` again.
+1. In the end, you're returning `Token` and `user` again.
 
 The implementation of both resolvers is relatively straighforward - nothing too surprising. The only thing that's not clear right now is the hardcoded selection set containing only the `id` field. What happens if the incoming mutation requests more information about the `User`?
 
@@ -218,7 +218,7 @@ mutation {
     email: "sarah@graph.cool"
     password: "graphql"
   ) {
-    token
+    Token
     user {
       id
       name
@@ -303,6 +303,8 @@ module.exports = {
 ```
 
 </Instruction>
+
+> Note that 'Bearer ' has a space in `const token = Authorization.replace('Bearer ', '')`
 
 The `APP_SECRET` is used to sign the JWTs which you're issuing for your users. It is completely independent to the `secret` that's specified in `prisma.yml`. In fact, it has nothing to do with Prisma at all, i.e. if you were to swap out the implementation of your database layer, the `APP_SECRET` would continue to be used in exactly the same way.
 
@@ -406,7 +408,7 @@ mutation {
     email: "alice@graph.cool"
     password: "graphql"
   ) {
-    token
+    Token
     user {
       id
     }
@@ -418,7 +420,7 @@ mutation {
 
 <Instruction>
 
-From the server's response, copy the authentication `token` and open another tab in the Playground. Inside that new tab, open the **HTTP HEADERS** pane in the bottom-left corner and specify the `Authorization` header - similar to what you did with the Prisma Playground before. Again, replace the `__TOKEN__` with the actual token:
+From the server's response, copy the authentication `Token` and open another tab in the Playground. Inside that new tab, open the **HTTP HEADERS** pane in the bottom-left corner and specify the `Authorization` header - similar to what you did with the Prisma Playground before. Again, replace the `__TOKEN__` with the actual token:
 
 ```json
 {
@@ -459,7 +461,7 @@ mutation {
     email: "alice@graph.cool"
     password: "graphql"
   ) {
-    token
+    Token
     user {
       email
       links {
